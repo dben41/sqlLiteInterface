@@ -14,12 +14,12 @@ public class CreateTables
 	  
 	  //drop tables
 	  dropTable("song");
-	  dropTable("interval_format");
+	  dropTable("delta_format");
 	  dropTable("string_format");
 	  
 	  //create tables
 	  createSongTable();
-	  createIntervalFormatTable();
+	  createDeltaFormatTable();
 	  createStringFormatTable();
 	  
 	  
@@ -75,10 +75,10 @@ public class CreateTables
   /*
    * Creates the song table in the db
    */
-  public static void createIntervalFormatTable(){
+  public static void createDeltaFormatTable(){
 	  try {
 		stmt = c.createStatement();
-		String sql = "CREATE TABLE interval_format " +
+		String sql = "CREATE TABLE delta_format " +
 	                 "(SID INTEGER PRIMARY KEY  AUTOINCREMENT, " +
 	                 " MELODY           TEXT    NOT NULL)"; 
 		stmt.executeUpdate(sql);

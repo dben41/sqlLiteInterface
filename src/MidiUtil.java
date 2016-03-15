@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -22,67 +23,42 @@ public class MidiUtil {
     public static final int NOTE_OFF = 0x80;
     static HashMap<String, Integer> noteMap = null;
     
-    //static String fileName = "midiFiles/misc/TwinkleMutli.mid";
-    static String[] songz = {"midiFiles/misc/TwinkleMutli.mid", "midiFiles/misc/26615.mid","midiFiles/misc/26615.mid","midiFiles/misc/33449.mid","midiFiles/misc/70747.mid"};
-    //static String fileName = "midiFiles/misc/26615.mid";
-    //static String fileName = "midiFiles/misc/33449.mid";
-    //static String fileName = "midiFiles/misc/70747.mid";
-    //static String fileName = "midiFiles/misc/79420.mid";
-    //static String fileName = "midiFiles/misc/84521.mid";
-    
+    /*
+	    //String format
+	    [[C5],[E5],[G5],[E5],[D5,F5,A5],[C5,G5,B5],[F5,C6],[A5]]
+	    //Number format
+	    [[60], [64], [67], [64], [62, 65, 69], [60, 67, 71],                  [65, 72],             [69]     ]
+	    //Delta format
+	    [      [+4], [+3], [-3], [-2,+1,+5],   [-2,+5,+9;-5,-2,+6;-9,-2,+2 ], [+5,+12;-2,+5;+6,+1], [+4;-3]  ]
+    */
 	public static void main(String[] args) {
 		//GetDB
 		DbInterface di = new DbInterface();
 		DbInterface.openDbConnection();
 		
-		//get artist
-		String artist = "";
+		String nameOfFile = "midiFiles/ACDC/Back_In_Black.mid";
 		
-		//get title
-		String title = "";
-
-		//Get all tracks in the string format for single track
-		//ArrayList<String> tracks = getStringFormat(fileName);
+		//read midi file and convert to string_format
+		ArrayList<String> tracks = getStringFormat(nameOfFile);
 		
-		//get all tracks in string format for an array of tracks
-		for(String fileName : songz){
-			ArrayList<String> tracks = getStringFormat(fileName);
-			if(tracks.isEmpty()) System.out.println(fileName);
-		}
-		/*
-		for(String track : tracks){
-			String deltaTrack = getDeltaFormat(track);
-		}
-		
-	
 		int trackNumber = 1;
 		for(String track : tracks){
+			System.out.println("string_format: " + track);
+			
+			//save string_format to DB
 			//if doesn't exist, commit
-		    DbInterface.insertNewSong(title, artist, trackNumber + "", "string_format", track);
-		    
-		    //get the delta format
-		    String deltaTrack = null;
-		    
-		    DbInterface.insertNewSong(title, artist, trackNumber + "", "delta_format", deltaTrack);
+		    DbInterface.insertNewSong(nameOfFile, null, trackNumber + "", "string_format", track);
+			
+			//convert string_format to delta_format
+			String deltaTrack = getDeltaFormat(track);
+			System.out.println("delta_format: " + deltaTrack);
+			
+			//save delta_format to DB
+			DbInterface.insertNewSong(nameOfFile, null, trackNumber + "", "delta_format", deltaTrack);
+			
+			trackNumber++;
 		}
-		*/
-		
-		
-		
-
-	}
-
-	private static String getDeltaFormat(String track) {
-		//split by space delimiter
-		String[] allNotes = track.split(" "); 
-		//change each value to int value
-		int[] intNotes = stringNotesToIntNotes(allNotes);
-		return null;
-	}
-
-	private static int[] stringNotesToIntNotes(String[] allNotes) {
-		//for(String note)
-		return null;
+		DbInterface.closeDbConnection();
 	}
 
 	/*
@@ -220,6 +196,93 @@ public class MidiUtil {
 	      }
 	      
 	      return unorderedList;
+	}
+	
+	/*
+ 	 * This converts a melody in string_format into delta_format.
+ 	 */
+	private static String getDeltaFormat(String track) {
+		//Convert from the string format to number format 
+		ArrayList songEntitiesInts = stringNotesToIntNotes(track);
+		
+		//Iterate through all the elements as a two-game
+		 ArrayList previousEntity = (ArrayList)songEntitiesInts.get(0);
+		 String deltaString = "";
+		 for(int i = 1; i < songEntitiesInts.size(); i++){
+			 ArrayList currentEntity = (ArrayList)songEntitiesInts.get(i);
+			 String currentMatrix = "[";
+			 //loop through all the notes 
+			 for(int j = 0; j < previousEntity.size(); j++){
+				 int previousNote = (int) previousEntity.get(j);
+				 for(int k = 0; k < currentEntity.size(); k++){
+					 int currentNote = (int) currentEntity.get(k); 
+					 int delta = currentNote - previousNote; 
+					 String deltaToString = "";
+					 if(delta > 0){
+						 deltaToString = "+" + delta + "";
+					 }else{
+						 deltaToString = "" + delta + "";
+					 }
+					 if(k + 1 != currentEntity.size()){
+						 currentMatrix += deltaToString + ",";
+					 }else{
+						 currentMatrix += deltaToString;
+					 }		
+				 }
+				 if(j + 1 == previousEntity.size()){
+					 currentMatrix += "],";
+				 }else{
+					 currentMatrix += ";";
+				 }
+			 }
+			 previousEntity = currentEntity;
+			 
+			 //add interval array
+			 deltaString += currentMatrix;
+		 }
+		
+		 deltaString = deltaString.substring(0, deltaString.length() -1);
+		 return "[" + deltaString  + "]";  
+	}
+	
+	private static ArrayList stringNotesToIntNotes(String track) {
+		ArrayList indexOfNote = new ArrayList(Arrays.asList(NOTE_NAMES)); 
+		 //remove the end and beginning bracket
+		 String temp = track.substring(2, track.length() - 2);
+		 String[] splitArray = temp.split("\\],\\[");
+		 ArrayList<String> songEntities = new ArrayList(Arrays.asList(splitArray));
+		 ArrayList songEntitiesInts = new ArrayList();
+		 //loop through every note or chord in melody
+		 for(String entity : songEntities){
+			 //loop thru every entity, find the number representation and delta
+			 ArrayList<String> entityArray = new ArrayList(Arrays.asList(entity.split(",")));
+			 ArrayList<Integer> entityArrayInts = new ArrayList<Integer>();
+
+			 for(String note: entityArray){
+				 
+				 
+				 String noteName = null;
+				 int octave = -1;	
+				 String temp2 = note.substring(1,2);
+				 
+				 //check for sharps
+				 if(temp2.equals("#")){
+					 noteName = note.substring(0,2);
+					 octave = Integer.parseInt(note.substring(2));
+				 }else{
+					 noteName = note.substring(0,1);
+					 octave = Integer.parseInt(note.substring(1));
+				 }
+				 
+				 int i = (octave * 12) + indexOfNote.indexOf(noteName);
+
+				 entityArrayInts.add(i);
+				 
+			 }
+			 songEntitiesInts.add(entityArrayInts);
+		 }
+		 return songEntitiesInts;			 
+		 
 	}
 
 }
