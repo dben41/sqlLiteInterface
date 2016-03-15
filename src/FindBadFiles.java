@@ -1,6 +1,8 @@
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,73 +18,50 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Track;
 
-public class MidiUtil {
+public class FindBadFiles {
     public static final String[] NOTE_NAMES = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
     public static final int NOTE_ON = 0x90;
     public static final int NOTE_OFF = 0x80;
     static HashMap<String, Integer> noteMap = null;
     
-    //static String fileName = "midiFiles/misc/TwinkleMutli.mid";
     static String[] songz = {"midiFiles/misc/TwinkleMutli.mid", "midiFiles/misc/26615.mid","midiFiles/misc/26615.mid","midiFiles/misc/33449.mid","midiFiles/misc/70747.mid"};
-    //static String fileName = "midiFiles/misc/26615.mid";
-    //static String fileName = "midiFiles/misc/33449.mid";
-    //static String fileName = "midiFiles/misc/70747.mid";
-    //static String fileName = "midiFiles/misc/79420.mid";
-    //static String fileName = "midiFiles/misc/84521.mid";
+
     
 	public static void main(String[] args) {
-		//GetDB
-		DbInterface di = new DbInterface();
-		DbInterface.openDbConnection();
 		
-		//get artist
-		String artist = "";
-		
-		//get title
-		String title = "";
-
-		//Get all tracks in the string format for single track
-		//ArrayList<String> tracks = getStringFormat(fileName);
+		try {
+			Files.walk(Paths.get("C:/Users/Daryl/workspace/sqlLiteDemo/midiFiles/misc")).forEach(filePath -> {
+				if(Files.isRegularFile(filePath)){
+					ArrayList<String> tracks = getStringFormat(filePath.toString());
+					if(tracks.isEmpty()){
+						System.out.println(filePath.toString());
+						File temp = new File(filePath.toString());
+						temp.delete();
+					}
+					
+					boolean tooShort = false;
+					for(String track : tracks){
+						if(track.length() < 80){
+							tooShort = true;
+							break;
+						}
+					}
+					if(tooShort){
+						System.out.println(filePath.toString());
+						File temp = new File(filePath.toString());
+						temp.delete();
+					}
+					
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		//get all tracks in string format for an array of tracks
-		for(String fileName : songz){
-			ArrayList<String> tracks = getStringFormat(fileName);
-			if(tracks.isEmpty()) System.out.println(fileName);
-		}
-		/*
-		for(String track : tracks){
-			String deltaTrack = getDeltaFormat(track);
-		}
-		
-	
-		int trackNumber = 1;
-		for(String track : tracks){
-			//if doesn't exist, commit
-		    DbInterface.insertNewSong(title, artist, trackNumber + "", "string_format", track);
-		    
-		    //get the delta format
-		    String deltaTrack = null;
-		    
-		    DbInterface.insertNewSong(title, artist, trackNumber + "", "delta_format", deltaTrack);
-		}
-		*/
-		
-		
-		
-
-	}
-
-	private static String getDeltaFormat(String track) {
-		//split by space delimiter
-		String[] allNotes = track.split(" "); 
-		//change each value to int value
-		int[] intNotes = stringNotesToIntNotes(allNotes);
-		return null;
-	}
-
-	private static int[] stringNotesToIntNotes(String[] allNotes) {
-		//for(String note)
-		return null;
+		//for(String fileName : songz){
+			
+		//}
 	}
 
 	/*
